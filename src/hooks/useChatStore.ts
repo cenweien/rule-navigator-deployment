@@ -1,31 +1,17 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ChatMessage, ChatSession, DocumentState, Citation } from '@/types/chat';
+import { sendChatMessage, checkHealth, getPdfUrl } from '@/services/api';
 
-// Mock documents for demo
-const mockDocuments = {
-  'cme-rulebook': {
-    id: 'cme-rulebook',
-    name: 'CME Group Rulebook',
-    type: 'pdf' as const,
-    content: '',
-    pages: [
-      { number: 1, content: 'Chapter 1: General Provisions\n\nThis rulebook governs all trading activities on CME Group exchanges. All market participants must comply with these rules and regulations.' },
-      { number: 42, content: 'Rule 432: Position Limits\n\nNo person shall own or control positions in excess of the following limits:\n\n(a) Spot month position limits apply to all contracts during the last five trading days.\n\n(b) All-months-combined limits apply to the total of all positions across all contract months.\n\n(c) Single-month limits apply to any individual contract month.\n\nViolations of position limits may result in disciplinary action including fines and trading suspensions.' },
-      { number: 43, content: 'Rule 433: Reporting Requirements\n\nAll traders holding positions above the reporting threshold must file daily position reports with the Exchange. Reports must be submitted by 5:00 PM CT each trading day.' },
-      { number: 156, content: 'Chapter 7: Delivery Procedures\n\nRule 756: Physical Delivery\n\nFor physically-settled contracts, delivery must be completed within the specified delivery period. Failure to deliver may result in penalties and forced buy-in procedures.' },
-    ],
-  },
-  'ice-regulations': {
-    id: 'ice-regulations',
-    name: 'ICE Futures Regulations',
-    type: 'pdf' as const,
-    content: '',
-    pages: [
-      { number: 1, content: 'ICE Futures Trading Regulations\n\nThese regulations apply to all contracts traded on ICE Futures exchanges.' },
-      { number: 28, content: 'Section 5.3: Margin Requirements\n\nInitial margin must be deposited before any position is established. Maintenance margin levels must be maintained at all times during the life of the position.\n\nMargin calls must be met within one hour of issuance during trading hours.' },
-    ],
-  },
-};
+// Backend connection state
+let isBackendAvailable = false;
+
+// Check backend availability on module load
+checkHealth().then((available) => {
+  isBackendAvailable = available;
+  if (!available) {
+    console.warn('Backend not available - using mock responses');
+  }
+});
 
 const initialSession: ChatSession = {
   id: '1',
@@ -96,65 +82,95 @@ export function useChatStore() {
 
     setIsLoading(true);
 
-    // Simulate AI response with citations
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      // Try to use backend API
+      const response = await sendChatMessage(content, activeSessionId);
 
-    const citations: Citation[] = [];
-    let responseContent = '';
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.message,
+        timestamp: new Date(),
+        citations: response.citations.length > 0 ? response.citations : undefined,
+      };
 
-    if (content.toLowerCase().includes('position limit')) {
-      citations.push({
-        id: 'cite-1',
-        documentId: 'cme-rulebook',
-        documentName: 'CME Group Rulebook',
-        pageNumber: 42,
-        highlightRange: { start: 0, end: 200 },
-        excerpt: 'No person shall own or control positions in excess of the following limits...',
-      });
-      responseContent = `Position limits are governed by **Rule 432** of the CME Rulebook. The rule establishes three types of limits:\n\n1. **Spot month limits** — Apply during the last five trading days\n2. **All-months-combined limits** — Total across all contract months\n3. **Single-month limits** — For any individual contract month\n\nViolations may result in disciplinary action including fines and trading suspensions.`;
-    } else if (content.toLowerCase().includes('margin')) {
-      citations.push({
-        id: 'cite-2',
-        documentId: 'ice-regulations',
-        documentName: 'ICE Futures Regulations',
-        pageNumber: 28,
-        highlightRange: { start: 0, end: 150 },
-        excerpt: 'Initial margin must be deposited before any position is established...',
-      });
-      responseContent = `Margin requirements for ICE Futures are outlined in **Section 5.3** of the regulations.\n\nKey requirements:\n\n- **Initial margin** must be deposited before establishing any position\n- **Maintenance margin** levels must be maintained throughout the position's life\n- **Margin calls** must be met within one hour during trading hours`;
-    } else if (content.toLowerCase().includes('delivery')) {
-      citations.push({
-        id: 'cite-3',
-        documentId: 'cme-rulebook',
-        documentName: 'CME Group Rulebook',
-        pageNumber: 156,
-        highlightRange: { start: 0, end: 180 },
-        excerpt: 'For physically-settled contracts, delivery must be completed within the specified delivery period...',
-      });
-      responseContent = `Physical delivery procedures are covered in **Chapter 7, Rule 756** of the CME Rulebook.\n\nThe key provisions state that:\n\n- Delivery must be completed within the specified delivery period\n- Failure to deliver may result in penalties\n- Forced buy-in procedures may be initiated for non-compliance`;
-    } else {
-      responseContent = `I can help you find specific rules and regulations in the commodity trading rulebooks. Try asking about:\n\n- **Position limits** and reporting requirements\n- **Margin requirements** for different exchanges\n- **Delivery procedures** for physical commodities\n- **Trading rules** and compliance requirements\n\nWhat specific topic would you like to explore?`;
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === activeSessionId
+            ? {
+                ...session,
+                messages: [...session.messages, aiMessage],
+                updatedAt: new Date(),
+              }
+            : session
+        )
+      );
+    } catch (error) {
+      console.error('API error, falling back to mock response:', error);
+
+      // Fallback to mock response if backend unavailable
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const citations: Citation[] = [];
+      let responseContent = '';
+
+      if (content.toLowerCase().includes('position limit')) {
+        citations.push({
+          id: 'cite-1',
+          documentId: 'CME-432',
+          documentName: 'CME Rule 432 - Position Limits',
+          pageNumber: 1,
+          highlightRange: { start: 0, end: 200 },
+          excerpt: 'No person shall own or control positions in excess of the following limits...',
+          pdfUrl: getPdfUrl('CME-432'),
+        });
+        responseContent = `Position limits are governed by **Rule 432** of the CME Rulebook. The rule establishes three types of limits:\n\n1. **Spot month limits** — Apply during the last five trading days\n2. **All-months-combined limits** — Total across all contract months\n3. **Single-month limits** — For any individual contract month\n\nViolations may result in disciplinary action including fines and trading suspensions.\n\n*Note: Connect the backend for full AI-powered responses.*`;
+      } else if (content.toLowerCase().includes('margin')) {
+        citations.push({
+          id: 'cite-2',
+          documentId: 'CME-930',
+          documentName: 'CME Rule 930 - Margins',
+          pageNumber: 1,
+          highlightRange: { start: 0, end: 150 },
+          excerpt: 'Initial margin must be deposited before any position is established...',
+          pdfUrl: getPdfUrl('CME-930'),
+        });
+        responseContent = `Margin requirements are outlined in the CME rulebook.\n\nKey requirements:\n\n- **Initial margin** must be deposited before establishing any position\n- **Maintenance margin** levels must be maintained throughout the position's life\n- **Margin calls** must be met promptly\n\n*Note: Connect the backend for full AI-powered responses.*`;
+      } else if (content.toLowerCase().includes('delivery')) {
+        citations.push({
+          id: 'cite-3',
+          documentId: 'CME-700',
+          documentName: 'CME Rule 700 - Delivery',
+          pageNumber: 1,
+          highlightRange: { start: 0, end: 180 },
+          excerpt: 'For physically-settled contracts, delivery must be completed within the specified delivery period...',
+          pdfUrl: getPdfUrl('CME-700'),
+        });
+        responseContent = `Physical delivery procedures are covered in the CME Rulebook.\n\nThe key provisions state that:\n\n- Delivery must be completed within the specified delivery period\n- Failure to deliver may result in penalties\n- Forced buy-in procedures may be initiated for non-compliance\n\n*Note: Connect the backend for full AI-powered responses.*`;
+      } else {
+        responseContent = `I can help you find specific rules and regulations in the CME trading rulebooks. Try asking about:\n\n- **Position limits** and reporting requirements\n- **Margin requirements** for trading\n- **Delivery procedures** for physical commodities\n- **Trading rules** and compliance requirements\n\n*Note: Start the backend server for AI-powered responses with real document citations.*`;
+      }
+
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: responseContent,
+        timestamp: new Date(),
+        citations: citations.length > 0 ? citations : undefined,
+      };
+
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === activeSessionId
+            ? {
+                ...session,
+                messages: [...session.messages, aiMessage],
+                updatedAt: new Date(),
+              }
+            : session
+        )
+      );
     }
-
-    const aiMessage: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: responseContent,
-      timestamp: new Date(),
-      citations: citations.length > 0 ? citations : undefined,
-    };
-
-    setSessions((prev) =>
-      prev.map((session) =>
-        session.id === activeSessionId
-          ? {
-              ...session,
-              messages: [...session.messages, aiMessage],
-              updatedAt: new Date(),
-            }
-          : session
-      )
-    );
 
     setIsLoading(false);
   }, [activeSessionId]);
@@ -206,7 +222,16 @@ export function useChatStore() {
   }, []);
 
   const getDocument = useCallback((documentId: string) => {
-    return mockDocuments[documentId as keyof typeof mockDocuments] || null;
+    // Return document info for the PDF viewer
+    const filename = documentId.replace('CME-', '') + '.pdf';
+    return {
+      id: documentId,
+      name: documentId.replace('CME-', 'CME Rule '),
+      type: 'pdf' as const,
+      content: '',
+      pdfUrl: getPdfUrl(documentId),
+      filename,
+    };
   }, []);
 
   return {

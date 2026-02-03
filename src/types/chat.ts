@@ -1,3 +1,10 @@
+export interface TextPosition {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 export interface Citation {
   id: string;
   documentId: string;
@@ -8,6 +15,9 @@ export interface Citation {
     end: number;
   };
   excerpt: string;
+  positions?: TextPosition[];
+  relevanceScore?: number;
+  pdfUrl?: string;
 }
 
 export interface ChatMessage {

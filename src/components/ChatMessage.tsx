@@ -1,39 +1,23 @@
+import { forwardRef } from 'react';
 import { ChatMessage as ChatMessageType, Citation } from '@/types/chat';
 import { CitationPill } from './CitationPill';
 import { motion } from 'framer-motion';
 import { User, Bot } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessageProps {
   message: ChatMessageType;
   onCitationClick: (citation: Citation) => void;
 }
 
-function parseMarkdown(content: string): React.ReactNode {
-  const parts = content.split(/(\*\*[^*]+\*\*|\n\n|\n- |\n\d+\. )/g);
-  
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>;
-    }
-    if (part === '\n\n') {
-      return <br key={index} />;
-    }
-    if (part === '\n- ') {
-      return <span key={index} className="block mt-1">• </span>;
-    }
-    if (/^\n\d+\. $/.test(part)) {
-      const num = part.match(/\d+/)?.[0];
-      return <span key={index} className="block mt-1">{num}. </span>;
-    }
-    return part;
-  });
-}
-
-export function ChatMessage({ message, onCitationClick }: ChatMessageProps) {
+export const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
+  ({ message, onCitationClick }, ref) => {
   const isUser = message.role === 'user';
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -57,8 +41,10 @@ export function ChatMessage({ message, onCitationClick }: ChatMessageProps) {
               : 'bg-message-ai border border-border'
           }`}
         >
-          <div className="text-[15px] leading-relaxed">
-            {parseMarkdown(message.content)}
+          <div className="text-[15px] leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:bg-muted prose-pre:text-foreground prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {message.content}
+            </ReactMarkdown>
           </div>
 
           {/* Citations */}
@@ -82,4 +68,6 @@ export function ChatMessage({ message, onCitationClick }: ChatMessageProps) {
       </div>
     </motion.div>
   );
-}
+});
+
+ChatMessage.displayName = 'ChatMessage';

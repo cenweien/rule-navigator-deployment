@@ -1,0 +1,22 @@
+# FastAPI and server
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+
+# PDF processing
+pymupdf
+pdfplumber
+
+# Vector database and embeddings
+chromadb
+sentence-transformers
+
+# Google Gemini
+google-generativeai
+
+# Utilities
+pydantic
+pydantic-settings
+aiofiles
+httpx
