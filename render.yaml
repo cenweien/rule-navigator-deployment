@@ -2,6 +2,7 @@ services:
   # Backend Service
   - type: web
     name: cme-rules-backend
+    plan: free
     env: python
     region: oregon
     rootDir: backend
@@ -18,6 +19,7 @@ services:
   # Frontend Service
   - type: web
     name: cme-rules-frontend
+    plan: free
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: dist
