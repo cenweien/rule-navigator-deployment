@@ -7,6 +7,7 @@ Usage:
 """
 
 import argparse
+import os
 import uvicorn
 from dotenv import load_dotenv
 
@@ -24,13 +25,13 @@ def main():
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
+        default=int(os.getenv("PORT", 8000)),
         help="Port to run the server on"
     )
     parser.add_argument(
         "--host",
         type=str,
-        default="0.0.0.0",
+        default=os.getenv("HOST", "0.0.0.0"),
         help="Host to bind the server to"
     )
 

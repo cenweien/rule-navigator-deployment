@@ -130,6 +130,12 @@ If the context doesn't fully answer the question, acknowledge this and provide w
             error_msg = str(e)
             if "quota" in error_msg.lower():
                 return "I apologize, but the API rate limit has been reached. Please try again in a moment."
+            elif "location" in error_msg.lower() or "400" in error_msg:
+                return (
+                    "API Error: User location is not supported. "
+                    "This service uses Google Gemini, which may be restricted in your current region (e.g., Hong Kong, Europe). "
+                    "Solution: Deploy this backend to a supported region (US/Singapore) or use a VPN/Proxy for local development."
+                )
             elif "api_key" in error_msg.lower():
                 return "There's an issue with the API configuration. Please check the API key setup."
             else:
