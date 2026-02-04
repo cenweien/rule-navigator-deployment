@@ -17,8 +17,9 @@ services:
         value: 3.11.0
 
   # Frontend Service
-  - type: static
+  - type: web
     name: cme-rules-frontend
+    env: static
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
