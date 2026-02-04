@@ -5,7 +5,12 @@
 import { Citation, TextPosition } from '@/types/chat';
 
 // Backend API base URL (backend runs on port 8000)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Backend API base URL (backend runs on port 8000)
+let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+if (!apiUrl.startsWith('http')) {
+  apiUrl = `https://${apiUrl}`;
+}
+const API_BASE_URL = apiUrl;
 
 /**
  * API response types matching backend schemas

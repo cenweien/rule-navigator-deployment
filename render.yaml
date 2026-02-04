@@ -19,7 +19,6 @@ services:
   - type: web
     name: cme-rules-frontend
     env: static
-    region: oregon
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
@@ -27,4 +26,4 @@ services:
         fromService:
           type: web
           name: cme-rules-backend
-          property: url
+          property: host
