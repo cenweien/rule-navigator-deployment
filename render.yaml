@@ -4,7 +4,7 @@ services:
     name: cme-rules-backend
     env: python
     region: oregon
-    rootCommand: cd backend
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
